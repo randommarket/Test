@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Portfolio Reporting Studio</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 2rem auto;
+        max-width: 960px;
+        padding: 0 1rem;
+        color: #222;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+      }
+      h1 {
+        margin: 0;
+      }
+      section {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+      }
+      label {
+        display: block;
+        margin-bottom: 0.25rem;
+        font-weight: 600;
+      }
+      input, select, button, textarea {
+        padding: 0.5rem;
+        margin-bottom: 0.75rem;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      button {
+        cursor: pointer;
+        background: #1a73e8;
+        color: white;
+        border: none;
+        border-radius: 4px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+      }
+      .status {
+        font-size: 0.9rem;
+        color: #555;
+        white-space: pre-wrap;
+      }
+      .token {
+        font-family: monospace;
+        font-size: 0.85rem;
+        background: #f6f6f6;
+        padding: 0.5rem;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Portfolio Reporting Studio</h1>
+      <a href="/docs" target="_blank">OpenAPI Docs</a>
+    </header>
+
+    <section>
+      <h2>1) Login</h2>
+      <div class="row">
+        <div>
+          <label>Email</label>
+          <input id="email" type="email" placeholder="demo@example.com" />
+        </div>
+        <div>
+          <label>Password</label>
+          <input id="password" type="password" placeholder="demo" />
+        </div>
+      </div>
+      <button onclick="login()">Login</button>
+      <div class="status" id="loginStatus"></div>
+      <div class="token" id="tokenDisplay"></div>
+    </section>
+
+    <section>
+      <h2>2) Companies</h2>
+      <div class="row">
+        <div>
+          <label>Company Name</label>
+          <input id="companyName" placeholder="Acme Inc" />
+        </div>
+        <div>
+          <label>Sector</label>
+          <input id="companySector" placeholder="SaaS" />
+        </div>
+      </div>
+      <button onclick="createCompany()">Create Company</button>
+      <button onclick="loadCompanies()">Refresh Company List</button>
+      <div class="status" id="companyStatus"></div>
+      <textarea id="companyList" rows="4" readonly></textarea>
+    </section>
+
+    <section>
+      <h2>3) Upload Actuals</h2>
+      <div class="row">
+        <div>
+          <label>Company ID</label>
+          <input id="uploadCompanyId" placeholder="1" />
+        </div>
+        <div>
+          <label>CSV File</label>
+          <input id="actualsFile" type="file" />
+        </div>
+      </div>
+      <button onclick="uploadActuals()">Upload Actuals</button>
+      <div class="status" id="uploadStatus"></div>
+    </section>
+
+    <section>
+      <h2>4) Mapping Status</h2>
+      <div class="row">
+        <div>
+          <label>Company ID</label>
+          <input id="mappingCompanyId" placeholder="1" />
+        </div>
+      </div>
+      <button onclick="loadMappingStatus()">Check Mapping Status</button>
+      <button onclick="downloadMappingTemplate()">Download Mapping Template</button>
+      <div class="status" id="mappingStatus"></div>
+    </section>
+
+    <section>
+      <h2>5) Generate Pack</h2>
+      <div class="row">
+        <div>
+          <label>Company ID</label>
+          <input id="packCompanyId" placeholder="1" />
+        </div>
+      </div>
+      <button onclick="downloadPack()">Download Pack</button>
+      <div class="status" id="packStatus"></div>
+    </section>
+
+    <section>
+      <h2>6) Portfolio Dashboard</h2>
+      <button onclick="loadDashboard()">Load Dashboard</button>
+      <textarea id="dashboardOutput" rows="6" readonly></textarea>
+    </section>
+
+    <script>
+      let token = "";
+
+      function setStatus(id, message) {
+        document.getElementById(id).textContent = message;
+      }
+
+      async function login() {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        const form = new URLSearchParams();
+        form.append("email", email);
+        form.append("password", password);
+        const res = await fetch("/auth/login", { method: "POST", body: form });
+        if (!res.ok) {
+          setStatus("loginStatus", "Login failed");
+          return;
+        }
+        const data = await res.json();
+        token = data.access_token;
+        document.getElementById("tokenDisplay").textContent = `Token: ${token}`;
+        setStatus("loginStatus", "Login successful");
+      }
+
+      async function createCompany() {
+        const name = document.getElementById("companyName").value;
+        const sector = document.getElementById("companySector").value;
+        const res = await fetch("/companies", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ name, sector }),
+        });
+        setStatus("companyStatus", res.ok ? "Company created" : "Company creation failed");
+        if (res.ok) {
+          loadCompanies();
+        }
+      }
+
+      async function loadCompanies() {
+        const res = await fetch("/companies", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        document.getElementById("companyList").value = JSON.stringify(data, null, 2);
+      }
+
+      async function uploadActuals() {
+        const companyId = document.getElementById("uploadCompanyId").value;
+        const file = document.getElementById("actualsFile").files[0];
+        if (!file) {
+          setStatus("uploadStatus", "Please select a CSV file");
+          return;
+        }
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch(`/companies/${companyId}/actuals`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: form,
+        });
+        setStatus("uploadStatus", res.ok ? "Upload complete" : "Upload failed");
+      }
+
+      async function loadMappingStatus() {
+        const companyId = document.getElementById("mappingCompanyId").value;
+        const res = await fetch(`/companies/${companyId}/mappings/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        document.getElementById("mappingStatus").textContent = JSON.stringify(data, null, 2);
+      }
+
+      async function downloadMappingTemplate() {
+        window.open("/companies/1/mappings/export", "_blank");
+      }
+
+      async function downloadPack() {
+        const companyId = document.getElementById("packCompanyId").value;
+        const res = await fetch(`/companies/${companyId}/pack`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          setStatus("packStatus", "Pack generation failed");
+          return;
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `company_${companyId}_pack.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setStatus("packStatus", "Pack downloaded");
+      }
+
+      async function loadDashboard() {
+        const res = await fetch("/portfolio/dashboard", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        document.getElementById("dashboardOutput").value = JSON.stringify(data, null, 2);
+      }
+    </script>
+  </body>
+</html>
