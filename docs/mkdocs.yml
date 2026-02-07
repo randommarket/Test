@@ -1,0 +1,25 @@
+site_name: Portfolio Reporting Studio
+nav:
+  - Home: index.md
+  - PRD: PRD.md
+  - Architecture: architecture.md
+  - Data Model: data_model.md
+  - API: api.md
+  - Excel Pack Spec: excel_pack_spec.md
+  - Finance Conventions: finance_conventions.md
+  - Roadmap: roadmap.md
+  - Risks: risks.md
+  - Runbooks:
+      - Deploy: runbooks/deploy.md
+      - Backup: runbooks/backup.md
+      - Restore: runbooks/restore.md
+  - Council Briefs:
+      - Product: council/product.md
+      - FP&A: council/fpa.md
+      - Private Credit: council/private_credit.md
+      - Data Architect: council/data_architect.md
+      - Backend: council/backend.md
+      - Frontend: council/frontend.md
+      - QA: council/qa.md
+      - DevOps: council/devops.md
+      - Writer: council/writer.md
